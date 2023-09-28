@@ -1,0 +1,33 @@
+services:
+  - docker:dind
+
+variables:
+  DOCKER_DRIVER: overlay
+  SPRING_PROFILES_ACTIVE: gitlab-ci
+
+stages:
+  - test
+  - build
+  - package
+  - deploy
+
+maven-test:
+  image: maven:3-openjdk-17
+  stage: test
+  script: "mvn clean verify"
+
+maven-build:
+  image: maven:3-openjdk-17
+  stage: build
+  script: "mvn package -B"
+  artifacts:
+    paths:
+      - target/*.jar
+
+docker-build:
+  image: docker:latest
+  stage: package
+  script:
+    - docker build -t registry.gitlab.com/kube-infra-demo/springboot3-example.
+    - docker login -u gitlab-ci-token -p $CI_BUILD_TOKEN registry.gitlab.com
+    - docker push registry.gitlab.com/kube-infra-demo/springboot3-example
