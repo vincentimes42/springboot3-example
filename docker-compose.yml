@@ -13,6 +13,7 @@ services:
   db:
     env_file: .env
     image: 'postgres:15.2'
+    container_name: springboot3-example_db_1
     ports:
       - '5432:5432'
     restart: unless-stopped
