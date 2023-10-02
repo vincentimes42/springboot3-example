@@ -2,32 +2,60 @@ services:
   - docker:dind
 
 variables:
-  DOCKER_DRIVER: overlay
-  SPRING_PROFILES_ACTIVE: gitlab-ci
-
+  DOCKER_DRIVER: overlay2
+  TAG_LATEST: $CI_REGISTRY_IMAGE/$CI_COMMIT_REF_SLUG:latest
+  TAG_COMMIT: $CI_REGISTRY_IMAGE/$CI_COMMIT_REF_SLUG:$CI_COMMIT_SHORT_SHA
 stages:
-  - test
   - build
   - package
+  - release
   - deploy
 
-maven-test:
-  image: maven:3-openjdk-17
-  stage: test
-  script: "mvn clean verify"
 
 maven-build:
   image: maven:3-openjdk-17
   stage: build
-  script: "mvn package -B"
+  script:
+    - mvn package -B
   artifacts:
     paths:
       - target/*.jar
 
+set-app-version:
+  image: maven:3-openjdk-17
+  stage: build
+  script:
+    - VERSION=$(mvn --non-recursive help:evaluate -Dexpression=project.version -q -DforceStdout)
+    - echo "VERSION=$VERSION"
+    - echo "VERSION=$VERSION" > build.env
+  artifacts:
+    reports:
+      dotenv: build.env
+
 docker-build:
   image: docker:latest
   stage: package
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH || $CI_COMMIT_TAG != null #run the job automatically if current branch is the default one or we are on a tag
+    - when: manual # else manual launch of the job
   script:
-    - docker build -t registry.gitlab.com/kube-infra-demo/springboot3-example.
-    - docker login -u gitlab-ci-token -p $CI_BUILD_TOKEN registry.gitlab.com
-    - docker push registry.gitlab.com/kube-infra-demo/springboot3-example
+    - docker build -t $TAG_COMMIT -t $TAG_LATEST .
+    - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN $CI_REGISTRY
+    - docker push $TAG_COMMIT
+    - docker push $TAG_LATEST
+
+release:
+  image: registry.gitlab.com/gitlab-org/release-cli:latest
+  stage: release
+  dependencies:
+    - set-app-version
+  rules:
+    - if: $CI_COMMIT_TAG
+      when: never                                  # Do not run this job in a tag pipeline
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH  # Run this job when commits are pushed or merged to the default branch
+  script:
+    - echo "Create release for v$VERSION"
+  release:
+    name: 'v$VERSION'
+    description: 'v$VERSION'
+    tag_name: '$CI_COMMIT_TAG'
