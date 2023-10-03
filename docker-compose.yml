@@ -6,6 +6,10 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: app
+    environment:
+      SPRING_POSTGRES_PASSWORD : ${DB_PASSWORD}
+      SPRING_POSTGRES_USERNAME: ${DB_USERNAME}
+      SPRING_POSTGRES_URL: "jdbc:postgresql://springboot3-example_db_1:5432/${DB_NAME}"
     depends_on:
       - db
     ports:

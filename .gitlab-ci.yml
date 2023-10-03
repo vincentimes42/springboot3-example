@@ -6,20 +6,17 @@ variables:
   TAG_LATEST: $CI_REGISTRY_IMAGE/$CI_COMMIT_REF_SLUG:latest
   TAG_COMMIT: $CI_REGISTRY_IMAGE/$CI_COMMIT_REF_SLUG:$CI_COMMIT_SHORT_SHA
 stages:
+  - test
   - build
-  - package
   - release
   - deploy
 
 
 maven-build:
   image: maven:3-openjdk-17
-  stage: build
+  stage: test
   script:
-    - mvn package -B
-  artifacts:
-    paths:
-      - target/*.jar
+    - mvn verify -B
 
 set-app-version:
   image: maven:3-openjdk-17
@@ -34,7 +31,7 @@ set-app-version:
 
 docker-build:
   image: docker:latest
-  stage: package
+  stage: build
   rules:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH || $CI_COMMIT_TAG != null #run the job automatically if current branch is the default one or we are on a tag
     - when: manual # else manual launch of the job
