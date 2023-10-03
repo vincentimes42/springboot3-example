@@ -58,3 +58,35 @@ release:
   release:
     description: 'v$VERSION'
     tag_name: 'v$VERSION'
+
+k8s-deploy-staging:
+  image:
+    name: bitnami/kubectl:latest
+    entrypoint: [ "" ]
+  stage: deploy
+  when: manual
+  script:
+    - echo "Start Deployment" # TODO define access to k8s
+    - kubectl delete secret --namespace=production registry.gitlab.com
+    - kubectl create secret --namespace=staging docker-registry registry.gitlab.com --docker-server=$CI_REGISTRY --docker-username=$CI_REGISTRY_USER --docker-password=$CI_REGISTRY_PASSWORD --docker-email=$GITLAB_USER_EMAIL
+    - kubectl apply -f deployment/app-deployment.yml --namespace=staging
+  environment:
+    name: staging
+    url: https://example.staging.com
+
+k8s-deploy-production:
+  image:
+    name: bitnami/kubectl:latest
+    entrypoint: [ "" ]
+  stage: deploy
+  rules:
+    - if: $CI_COMMIT_TAG != null #run the job automatically
+      when: manual
+    - when: never
+  script:
+    - kubectl delete secret --namespace=production registry.gitlab.com
+    - kubectl create secret --namespace=production docker-registry registry.gitlab.com --docker-server=$CI_REGISTRY --docker-username=$CI_REGISTRY_USER --docker-password=$CI_REGISTRY_PASSWORD --docker-email=$GITLAB_USER_EMAIL
+    - kubectl apply -f deployment/app-deployment.yml --namespace=production
+  environment:
+    name: production
+    url: https://example.production.com
