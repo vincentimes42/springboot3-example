@@ -5,7 +5,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: app
+    container_name: springboot3-example_app_1
     depends_on:
       - db
     ports:
