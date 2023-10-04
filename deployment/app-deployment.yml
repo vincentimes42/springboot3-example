@@ -48,7 +48,10 @@ spec:
                   name: postgresql-config-map
                   key: postgresql-user-username
             - name: SPRING_POSTGRES_URL
-              value: "jdbc:postgresql://${DB_SERVER}:${DB_PORT:5432}/${DB_NAME}"
+              valueFrom:
+                configMapKeyRef:
+                  name: springboot-config-map
+                  key: db-url
       imagePullSecrets:
         - name: registry.gitlab.com
 ---
