@@ -1,92 +1,69 @@
 # Springboot3-example
 
+Application Springboot3/JAVA17.
+L'application est un webservice REST simpliste pour gérer une liste d'employés identifiés par leur addresse email. 
 
 
-## Getting started
 
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
+Pour travailer en local, il est possible de lancer l'application avec docker compose.
 
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
-
-## Add your files
-
-- [ ] [Create](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#create-a-file) or [upload](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#upload-a-file) files
-- [ ] [Add files using the command line](https://docs.gitlab.com/ee/gitlab-basics/add-file.html#add-a-file-using-the-command-line) or push an existing Git repository with the following command:
-
-```
-cd existing_repo
-git remote add origin https://gitlab.com/vincent.linas/springboot3-example.git
-git branch -M main
-git push -uf origin main
+## DOCKER COMPOSE
+Le fichier .env contient les Variables nécéssaire pour lancer la base de données postgres et l'application springboot.
+On peux créer les conteneur avec les commandes suivantes
+```sh
+docker compose up db
+docker compose up app
 ```
 
-## Integrate with your tools
+## Quelques URLS du webService:
+SWAGGER: http://localhost:8080/swagger-ui/index.html#/
+Health: http://localhost:8080/actuator/health
 
-- [ ] [Set up project integrations](https://gitlab.com/vincent.linas/springboot3-example/-/settings/integrations)
+## CI/CD
+Le projet possède une CI/CD  capable de tester, builder et de releaser l'application. 
+Une étape de déployment sur kubernetes est également présente mais reste à terminer faute d'instance kubernetes accessible.
 
-## Collaborate with your team
+## KUBERNETES
+Pour la partie deploiement kubernetes, est est fonctionnelle en local (ex minikube). 
+Les containers utilisent les images présentes dans le container registry Gitlab du groupe de projets 
 
-- [ ] [Invite team members and collaborators](https://docs.gitlab.com/ee/user/project/members/)
-- [ ] [Create a new merge request](https://docs.gitlab.com/ee/user/project/merge_requests/creating_merge_requests.html)
-- [ ] [Automatically close issues from merge requests](https://docs.gitlab.com/ee/user/project/issues/managing_issues.html#closing-issues-automatically)
-- [ ] [Enable merge request approvals](https://docs.gitlab.com/ee/user/project/merge_requests/approvals/)
-- [ ] [Set auto-merge](https://docs.gitlab.com/ee/user/project/merge_requests/merge_when_pipeline_succeeds.html)
+Il y a des fichiers dans le dossier deployment/ pour pouvoir déployer l'application sur kubernetes. 
+Pour les fichier de deploiement de la base de données postgres il sont dans le projet https://gitlab.com/kube-infra-demo/postgres-infra
 
-## Test and Deploy
+Fichiers K8S pour l'application:
+- app-deployment.yml contient le deploiement de l'application.
+  - l'application est exposé via une servie Nodeport et un Ingress.
+    - il y a les deux car NotePorte est plus stable que Ingress dans mon minikube sur windows WSL2.
+- app-deployment-ci.yml est destiné à être utilisé par la CI/CD de gitlab 
 
-Use the built-in continuous integration in GitLab.
+Des ressources supplémentaires de type secret et configmap son nécéssaires pour déployer.
 
-- [ ] [Get started with GitLab CI/CD](https://docs.gitlab.com/ee/ci/quick_start/index.html)
-- [ ] [Analyze your code for known vulnerabilities with Static Application Security Testing(SAST)](https://docs.gitlab.com/ee/user/application_security/sast/)
-- [ ] [Deploy to Kubernetes, Amazon EC2, or Amazon ECS using Auto Deploy](https://docs.gitlab.com/ee/topics/autodevops/requirements.html)
-- [ ] [Use pull-based deployments for improved Kubernetes management](https://docs.gitlab.com/ee/user/clusters/agent/)
-- [ ] [Set up protected environments](https://docs.gitlab.com/ee/ci/environments/protected_environments.html)
+Le détails des commandes pour creer toute couches dans kubernetes:
+Les commandes présentées plus loin partent du principe que les projets du groupe sont présent localement cote à cote. (ex:)
+```
+├── angular-example
+├── platon
+├── postgres-infra
+└── springboot3-example
+```
 
-***
+Les commandes sont a jouer dans cet ordres:
+```sh
+***************INGRESS & NAMESPACE**********************
+kubectl create namespace staging
+kubectl apply -f postgres-infra/ingress.yml --namespace=staging
 
-# Editing this README
+*******************POSTGRES*****************
 
-When you're ready to make this README your own, just edit this file and use the handy template below (or feel free to structure it however you want - this is just a starting point!). Thank you to [makeareadme.com](https://www.makeareadme.com/) for this template.
+kubectl create secret --namespace=staging generic postgresql-pass --from-literal=postgresql-root-password=sb57g9qQU2wQ7Q --from-literal=postgresql-user-password=M3P@ssw0rd!
+kubectl apply -f postgres-infra/deployment/config-map.yml --namespace=staging
+kubectl apply -f postgres-infra/deployment/deployment.yml --namespace=staging
 
-## Suggestions for a good README
-Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
+*******************SPRINGBOOT*****************
 
-## Name
-Choose a self-explaining name for your project.
+kubectl create configmap --namespace=staging springboot-config-map --from-literal=db-url=jdbc:postgresql://postgresql-service.staging.svc.cluster.local:5432/demoDb
+kubectl apply -f springboot3-example/deployment/app-deployment-local.yml --namespace=staging
 
-## Description
-Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
-
-## Badges
-On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
-
-## Visuals
-Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.
-
-## Installation
-Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
-
-## Usage
-Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
-
-## Support
-Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.
-
-## Roadmap
-If you have ideas for releases in the future, it is a good idea to list them in the README.
-
-## Contributing
-State if you are open to contributions and what your requirements are for accepting them.
-
-For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.
-
-You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
-
-## Authors and acknowledgment
-Show your appreciation to those who have contributed to the project.
-
-## License
-For open source projects, say how it is licensed.
-
-## Project status
-If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
+*******************ANGULAR*****************
+kubectl apply -f angular-example/deployment/app-deployment-local.yml --namespace=staging
+```

@@ -66,7 +66,8 @@ k8s-deploy-staging:
     - echo "Start Deployment" # TODO define access to k8s
     - kubectl delete secret --namespace=staging registry.gitlab.com
     - kubectl create secret --namespace=staging docker-registry registry.gitlab.com --docker-server=$CI_REGISTRY --docker-username=$CI_REGISTRY_USER --docker-password=$CI_REGISTRY_PASSWORD --docker-email=$GITLAB_USER_EMAIL
-    - kubectl apply -f deployment/app-deployment.yml --namespace=staging
+    - kubectl create configmap --namespace=staging springboot-config-map --from-literal=db-url=$SPRING_POSTGRES_URL
+    - kubectl apply -f deployment/app-deployment-ci.yml --namespace=staging
   environment:
     name: staging
     url: https://example.staging.com
@@ -81,9 +82,11 @@ k8s-deploy-production:
       when: manual
     - when: never
   script:
+    - echo "Start Deployment" # TODO define access to k8s
     - kubectl delete secret --namespace=production registry.gitlab.com
     - kubectl create secret --namespace=production docker-registry registry.gitlab.com --docker-server=$CI_REGISTRY --docker-username=$CI_REGISTRY_USER --docker-password=$CI_REGISTRY_PASSWORD --docker-email=$GITLAB_USER_EMAIL
-    - kubectl apply -f deployment/app-deployment.yml --namespace=production
+    - kubectl create configmap --namespace=production springboot-config-map --from-literal=db-url=$SPRING_POSTGRES_URL
+    - kubectl apply -f deployment/app-deployment-ci.yml --namespace=production
   environment:
     name: production
     url: https://example.production.com

@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
         - name: springboot3-example-app
-          image: registry.gitlab.com/$TAG_COMMIT
+          image: registry.gitlab.com/kube-infra-demo/springboot3-example/main:latest
           imagePullPolicy: IfNotPresent
           ports:
             - name: http
@@ -32,23 +32,16 @@ spec:
                 secretKeyRef:
                   name: postgresql-pass
                   key: postgresql-user-password
-            - name: DB_SERVER
-              valueFrom:
-                configMapKeyRef:
-                  name:  postgresql-config-map
-                  key: postgresql-server
-            - name: DB_NAME
-              valueFrom:
-                configMapKeyRef:
-                  name:  postgresql-config-map
-                  key: postgresql-database-name
             - name: SPRING_POSTGRES_USERNAME
               valueFrom:
                 configMapKeyRef:
                   name: postgresql-config-map
                   key: postgresql-user-username
             - name: SPRING_POSTGRES_URL
-              value: "jdbc:postgresql://${DB_SERVER}:${DB_PORT:5432}/${DB_NAME}"
+              valueFrom:
+                configMapKeyRef:
+                  name: springboot-config-map
+                  key: db-url
       imagePullSecrets:
         - name: registry.gitlab.com
 ---
@@ -59,12 +52,12 @@ metadata:
   labels:
     app: springboot3-example
 spec:
-  type: LoadBalancer
+  type: NodePort
   selector:
     app: springboot3-example
   ports:
     - protocol: TCP
-      name: http
-      port: 8080
+      port: 80
       targetPort: 8080
-      nodePort: 30000
+      name: http
+      nodePort: 30001
